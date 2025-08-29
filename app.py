@@ -46,7 +46,7 @@ query = st.text_area("🗣️ Chat with Dataframe")
 container = st.container()
 
 if query:
-    llm = LiteLLM(model="gemini/gemini-2.5-flash", api_key="YOUR_GEMINI_API_KEY")
+    llm = LiteLLM(model="gemini/gemini-2.5-flash", api_key="AIzaSyA9-F7r3O0_9h7P10_i_n9T8kioqLoECOA")
     query_engine = SmartDataframe(
         df,
         config={
