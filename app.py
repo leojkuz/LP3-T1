@@ -22,8 +22,8 @@ if query:
     # LLM a través de LiteLLM (Gemini en este caso)
     llm = LiteLLM(
         model="gemini/gemini-2.5-flash",
-        api_key=st.secrets["gemini_key"]
-        temperature=0.5,
+        api_key=st.secrets["gemini_key"],
+        temperature=0.5
     )
 
     # SmartDataframe con el LLM configurado
