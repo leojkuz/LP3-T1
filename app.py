@@ -26,13 +26,19 @@ if query:
         temperature=0.5
     )
 
+    pai.config.set({
+    "llm": llm,  
+    'history_size': 10,
+    'system_prompt': "You are a helpful assistant that answers questions about data always in the same language as the question. If the question is in Spanish, you answer in Spanish. If the question is in English, you answer in English.",
+})
+
     # SmartDataframe con el LLM configurado
     sdf = SmartDataframe(df, config={"llm": llm})
 
     # Ejecuta la consulta
     response = sdf.chat(query)
 
-    # Manejo de la respuesta (igual que en el ejemplo sin callback)
+    # Manejo de la respuesta
     if response.type == "dataframe":
         st.dataframe(response.value, use_container_width=True, hide_index=True)
         st.code(response.last_code_executed, language="python")
