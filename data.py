@@ -7,7 +7,7 @@ import streamlit as st
 
 def load_file(path: str) -> pd.DataFrame:
     with open(path, "rb") as f:
-        dataset = pickle.load(f)
+        dataset = pd.read_pickle(f)
         return dataset
 
 
