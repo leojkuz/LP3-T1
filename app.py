@@ -1,60 +1,46 @@
 
 import os
-
 import streamlit as st
+import pandas as pd
 from pandasai import SmartDataframe
-from pandasai.callbacks import BaseCallback
 from pandasai_litellm.litellm import LiteLLM
-from pandasai.responses.response_parser import ResponseParser
-
 from data import load_data
 
-
-class StreamlitCallback(BaseCallback):
-    def __init__(self, container) -> None:
-        """Initialize callback handler."""
-        self.container = container
-
-    def on_code(self, response: str):
-        self.container.code(response)
-
-
-class StreamlitResponse(ResponseParser):
-    def __init__(self, context) -> None:
-        super().__init__(context)
-
-    def format_dataframe(self, result):
-        st.dataframe(result["value"])
-        return
-
-    def format_plot(self, result):
-        st.image(result["value"])
-        return
-
-    def format_other(self, result):
-        st.write(result["value"])
-        return
-
-
+# --- Configuración Streamlit ---
 st.write("# Chat with Credit Card Fraud Dataset 🦙")
 
+# Carga de datos
 df = load_data("./data")
 
 with st.expander("🔎 Dataframe Preview"):
     st.write(df.tail(3))
 
+# Campo de texto para la consulta
 query = st.text_area("🗣️ Chat with Dataframe")
-container = st.container()
 
 if query:
-    llm = LiteLLM(model="gemini/gemini-2.5-flash", api_key=gemini_key)
-    query_engine = SmartDataframe(
-        df,
-        config={
-            "llm": llm,
-            "response_parser": StreamlitResponse,
-            "callback": StreamlitCallback(container),
-        },
+    # LLM a través de LiteLLM (Gemini en este caso)
+    llm = LiteLLM(
+        model="gemini/gemini-2.5-flash",
+        api_key=st.secrets["gemini_key"]
+        temperature=0.5,
     )
 
-    answer = query_engine.chat(query)
+    # SmartDataframe con el LLM configurado
+    sdf = SmartDataframe(df, config={"llm": llm})
+
+    # Ejecuta la consulta
+    response = sdf.chat(query)
+
+    # Manejo de la respuesta (igual que en el ejemplo sin callback)
+    if response.type == "dataframe":
+        st.dataframe(response.value, use_container_width=True, hide_index=True)
+        st.code(response.last_code_executed, language="python")
+
+    elif response.type == "chart":
+        st.image(response.value)
+        st.code(response.last_code_executed, language="python")
+
+    else:
+        st.write(response.value)
+        st.code(response.last_code_executed, language="python")
