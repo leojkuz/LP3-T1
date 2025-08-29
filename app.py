@@ -2,6 +2,7 @@
 import os
 import streamlit as st
 import pandas as pd
+import pandasai as pai
 from pandasai import SmartDataframe
 from pandasai_litellm.litellm import LiteLLM
 from data import load_data
