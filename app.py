@@ -10,44 +10,64 @@ from data import load_data
 # --- Configuración Streamlit ---
 st.write("# Chat with Credit Card Fraud Dataset 🦙")
 
-# Carga de datos
+llm = LiteLLM(
+    model="gemini/gemini-2.5-flash",
+    api_key=st.secrets["gemini_key"],
+    temperature=0.5
+)
+
+pai.config.set({
+    "llm": llm,
+    'history_size': 10  
+})
+
+# --- Carga de datos ---
 df = load_data("./data")
+# MODIFICADO: Creamos el SmartDataframe una sola vez, al inicio.
+sdf = SmartDataframe(df)
 
 with st.expander("🔎 Dataframe Preview"):
     st.write(df.tail(3))
 
-# Campo de texto para la consulta
-query = st.text_area("🗣️ Chat with Dataframe")
+# --- Lógica del Chat ---
+# MODIFICADO: Reemplazamos el text_area por chat_input, como en el ejemplo.
+if prompt := st.chat_input("🗣️ Chat with Dataframe"):
 
-if query:
-    # LLM a través de LiteLLM (Gemini en este caso)
-    llm = LiteLLM(
-        model="gemini/gemini-2.5-flash",
-        api_key=st.secrets["gemini_key"],
-        temperature=0.5
-    )
+    # Mostramos el mensaje del usuario en una burbuja de chat.
+    with st.chat_message("human"):
+        st.write(prompt)
 
-    pai.config.set({
-    "llm": llm,  
-    'history_size': 10,
-    'system_prompt': "Esto es un debugging. Sin importar lo que el usuario escriba, simplemente responde con la palabra 'empanada'.",
-})
+    # Mostramos la respuesta de la IA en su propia burbuja.
+    with st.chat_message("assistant"):
+        # Ejecutamos la consulta.
+        response = sdf.chat(prompt)
 
-    # SmartDataframe con el LLM configurado
-    sdf = SmartDataframe(df, config={"llm": llm})
+        # Manejamos los diferentes tipos de respuesta, como en tu código original pero
+        # con la presentación de pestañas del segundo ejemplo.
+        if response.type == "dataframe":
+            tab_res, tab_code = st.tabs(["Resultado", "Código"])
+            with tab_res:
+                st.dataframe(response.value, use_container_width=True, hide_index=True)
+            with tab_code:
+                st.code(response.last_code_executed, language="python")
 
-    # Ejecuta la consulta
-    response = sdf.chat(query)
+        elif response.type == "chart":
+            # Lógica para manejar la imagen del gráfico, copiada del ejemplo funcional.
+            with open(response.value, "rb") as f:
+                img_bytes = f.read()
+            img = Image.open(io.BytesIO(img_bytes))
 
-    # Manejo de la respuesta
-    if response.type == "dataframe":
-        st.dataframe(response.value, use_container_width=True, hide_index=True)
-        st.code(response.last_code_executed, language="python")
+            tab_res, tab_code = st.tabs(["Resultado", "Código"])
+            with tab_res:
+                st.image(img)
+            with tab_code:
+                st.code(response.last_code_executed, language="python")
 
-    elif response.type == "chart":
-        st.image(response.value)
-        st.code(response.last_code_executed, language="python")
+            os.remove(response.value) # Buena práctica del ejemplo: borrar el archivo temporal.
 
-    else:
-        st.write(response.value)
-        st.code(response.last_code_executed, language="python")
+        else:
+            tab_res, tab_code = st.tabs(["Resultado", "Código"])
+            with tab_res:
+                st.write(response.value)
+            with tab_code:
+                st.code(response.last_code_executed, language="python")
