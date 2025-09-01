@@ -30,7 +30,7 @@ if query:
     pai.config.set({
     "llm": llm,  
     'history_size': 10,
-    'system_prompt': "You are a helpful assistant that answers questions about data always in the same language as the question. If the question is in Spanish, you answer in Spanish. If the question is in English, you answer in English.",
+    'system_prompt': "Esto es un debugging. Sin importar lo que el usuario escriba, simplemente responde con la palabra 'empanada'.",
 })
 
     # SmartDataframe con el LLM configurado
