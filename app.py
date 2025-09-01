@@ -12,63 +12,62 @@ from PIL import Image
 st.set_page_config(layout="wide")
 st.write("# Chat with Credit Card Fraud Dataset 🦙")
 
-# --- Configuración Global del LLM y PandasAI ---
+# --- CLAVE #1: CONFIGURACIÓN GLOBAL DE LA MEMORIA ---
+# Establecemos las reglas del juego para CUALQUIER instancia de PandasAI que se cree.
+# Hacemos esto una sola vez, al principio del script.
 llm = LiteLLM(
     model="gemini/gemini-2.5-flash",
     api_key=st.secrets["gemini_key"],
     temperature=0.5
 )
-
 pai.config.set({
     "llm": llm,
-    'history_size': 10
+    'history_size': 10, # La IA recordará las 5 últimas preguntas y respuestas.
+    "enable_cache": False
 })
 
 # --- Carga de datos ---
 df = load_data("./data")
-sdf = SmartDataframe(df)
+
+# --- CLAVE #2: CREACIÓN DE UN AGENTE PERSISTENTE ---
+# Creamos nuestro "analista" una sola vez y lo guardamos en la sesión para que no se reinicie.
+if "agent" not in st.session_state:
+    st.session_state.agent = SmartDataframe(df)
 
 with st.expander("🔎 Dataframe Preview"):
     st.write(df.tail(3))
 
-# --- GESTIÓN DEL HISTORIAL VISUAL ---
-# NUEVO: Inicializamos el historial en st.session_state si no existe.
+# --- Gestión del Historial Visual ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# NUEVO: Mostramos todos los mensajes antiguos al principio de cada ejecución.
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
 # --- Lógica del Chat ---
 if prompt := st.chat_input("🗣️ Chat with Dataframe"):
-
-    # NUEVO: Añadimos el mensaje del usuario al historial para que se guarde.
     st.session_state.messages.append({"role": "user", "content": prompt})
-    # Lo mostramos en la pantalla.
     with st.chat_message("user"):
         st.write(prompt)
 
-    # Mostramos la respuesta de la IA.
     with st.chat_message("assistant"):
-        response = sdf.chat(prompt)
-        response_content = response.value # Guardamos el contenido para el historial
+        with st.spinner("Thinking..."):
+            # Usamos el AGENTE PERSISTENTE de la sesión. Este es el que tiene la memoria.
+            response = st.session_state.agent.chat(prompt)
 
-        # La misma lógica de antes para mostrar la respuesta actual.
-        if response.type == "dataframe":
-            st.dataframe(response_content, use_container_width=True, hide_index=True)
-        elif response.type == "chart":
-            st.image(response_content)
-        else:
+            response_content = response.value
             st.write(response_content)
 
+            # (Aquí iría la lógica para mostrar gráficos o tablas si la respuesta los tuviera)
+            if response.type == "dataframe":
+                st.dataframe(response_content, use_container_width=True, hide_index=True)
+            elif response.type == "chart":
+                st.image(response_content)
+            else:
+                st.write(response_content)
+
         # Mostramos el código ejecutado en un desplegable para no estorbar.
-        with st.expander("Show executed code"):
-            st.code(response.last_code_executed, language="python")
-
-        # NUEVO: Añadimos la respuesta de la IA al historial para que se guarde.
-        # Nota: Guardamos la respuesta simple para mantener el historial visual limpio.
-        # El código es más complejo para guardar también tablas e imágenes, podemos verlo después.
-        st.session_state.messages.append({"role": "assistant", "content": response_content})
-
+            with st.expander("Show executed code"):
+                st.code(response.last_code_executed, language="python")
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
