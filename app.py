@@ -94,7 +94,7 @@ if prompt := st.chat_input("🗣️ Chat with Dataframe"):
             elif response.type == "chart":
                 # Codificamos la imagen para la memoria de la IA
                 base64_image = encode_image(response.value)
-                response_message = {"role": "assistant", "content": response.value, "type": "chart", "code": response.last_code_executed", "base64": base64_image}
+                response_message = {"role": "assistant", "content": response.value, "type": "chart", "code": response.last_code_executed, "base64": base64_image}
             else:
                 response_message = {"role": "assistant", "content": response.value, "type": "string", "code": response.last_code_executed}
 
