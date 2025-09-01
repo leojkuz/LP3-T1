@@ -2,4 +2,3 @@ openai
 pandasai
 streamlit
 pandasai_litellm
-base64
