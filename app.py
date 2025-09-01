@@ -7,7 +7,8 @@ from data import load_data
 import io
 from PIL import Image
 
-st.set_page_config(layout="wide")
+# CAMBIO 1: Ajustamos el layout a 'centered' (centrado) en vez de 'wide'.
+st.set_page_config(layout="centered")
 st.write("# Chat with Credit Card Fraud Dataset 🦙")
 
 llm = LiteLLM(
@@ -27,27 +28,33 @@ with st.expander("🔎 Dataframe Preview"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ÚNICA FUENTE DE VERDAD: Este bucle es el responsable de dibujar todo el chat.
+# ÚNICA FUENTE DE VERDAD: Este bucle ahora manejará las pestañas.
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        if message.get("type") == "dataframe":
-            st.dataframe(message["content"], use_container_width=True, hide_index=True)
-        elif message.get("type") == "chart":
-            st.image(message["content"])
-        else:
+        if message["role"] == "user":
             st.write(message["content"])
+        else: # Si el mensaje es del asistente...
+            # CAMBIO 2: Lógica de pestañas integrada aquí.
+            tab_res, tab_code = st.tabs(["Resultado", "Código"])
+            with tab_res:
+                if message.get("type") == "dataframe":
+                    st.dataframe(message["content"], use_container_width=True, hide_index=True)
+                elif message.get("type") == "chart":
+                    st.image(message["content"])
+                else:
+                    st.write(message["content"])
+            with tab_code:
+                # Usamos .get("code", "...") para ser seguros si un mensaje antiguo no tuviera código.
+                st.code(message.get("code", "No code executed for this response."), language="python")
 
 # Lógica del Chat
 if prompt := st.chat_input("🗣️ Chat with Dataframe"):
-    # Añadimos y mostramos el mensaje del usuario inmediatamente.
     st.session_state.messages.append({"role": "user", "content": prompt, "type": "string"})
     with st.chat_message("user"):
         st.write(prompt)
 
-    # Creamos el contenedor de la IA, pero no dibujamos la respuesta final aquí.
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # Lógica de contexto manual
             history = st.session_state.messages[-10:]
             context_string = "\n".join(
                 [f"{msg['role']}: {msg['content']}" for msg in history if msg['type'] == 'string']
@@ -56,16 +63,13 @@ if prompt := st.chat_input("🗣️ Chat with Dataframe"):
 
             response = st.session_state.sdf_instance.chat(full_prompt)
 
-            # Preparamos el mensaje de respuesta
+            # CAMBIO 3: Ahora también guardamos el código ejecutado en el historial.
             if response.type == "dataframe":
-                response_message = {"role": "assistant", "content": response.value, "type": "dataframe"}
+                response_message = {"role": "assistant", "content": response.value, "type": "dataframe", "code": response.last_code_executed}
             elif response.type == "chart":
-                response_message = {"role": "assistant", "content": response.value, "type": "chart"}
+                response_message = {"role": "assistant", "content": response.value, "type": "chart", "code": response.last_code_executed}
             else:
-                response_message = {"role": "assistant", "content": response.value, "type": "string"}
+                response_message = {"role": "assistant", "content": response.value, "type": "string", "code": response.last_code_executed}
 
-            # Añadimos la respuesta al historial
             st.session_state.messages.append(response_message)
-
-            # LA SOLUCIÓN: Forzamos una re-ejecución del script.
             st.rerun()
